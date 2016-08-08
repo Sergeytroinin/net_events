@@ -1,13 +1,16 @@
 {
   "name": "net_events",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Sergey Troinin",
+    "email": "sergey4troinin@gmail.com"
+  },
+  "license": "MIT",
   "dependencies": {
     "maxmind": "^1.3.0",
     "pcap": "git+https://github.com/mranney/node_pcap.git"
