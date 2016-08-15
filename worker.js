@@ -21,6 +21,8 @@ var lookup = maxmind.open('./GeoLite2-Country.mmdb', {
     }
 });
 
+var fs = require('fs');
+
 
 var PacketStore = {};
 
@@ -62,9 +64,12 @@ process.on('message', (e) => {
  * @param eventData
  */
 function sendEvent(eventData) {
+
+    // console.log(eventData);
+
     process.send({
-        name: eventData.name,
-        data: eventData.data
+        eventName: eventData.eventName,
+        data: eventData
     })
 }
 
@@ -81,36 +86,44 @@ function startObserve(interfaceName) {
 
     tcp_tracker.on('session', function (session) {
 
+        var b = new Buffer('');
 
-        // var s = new Session(session);
-
-        // var body = new Buffer('');
-        //
-        // s.on('http response body', (a, data) => {
-        //     console.log('PACKET');
-        //     body = Buffer.concat([body, data]);
-        //     // console.log(a)
-        // });
-        //
-        // s.on('http response complete', (data) => {
-        //     console.log(body.toString())
-        // });
 
         sendEvent({
-            name: CONNECT_EVENT,
-            data: {
-                src: session.src_name,
-                dst: session.dst_name
-            }
+            eventName: CONNECT_EVENT,
+            src: session.src_name,
+            dst: session.dst_name
+
         });
 
+        session.on('data recv', (s, buf) => {
+
+            b = Buffer.concat([b, buf]);
+
+
+        });
+
+
+        // session.on('retransmit', (s, h) => {
+        //
+        //     console.log('HTTP ljsdkfauibfvhi;aosdbhfi[o')
+        //
+        // })
+
         session.on('end', function (session) {
+
+            // console.log(b);
+            //
+            // console.log(b.toString('utf8', 0, b.length));
+            //
+            // fs.writeFileSync(`${Math.random()}.html`, b.toString('utf8', 0, b.length));
+
+
             sendEvent({
-                name: DISCONNECT_EVENT,
-                data: {
-                    src: session.src_name,
-                    dst: session.dst_name
-                }
+                eventName: DISCONNECT_EVENT,
+                src: session.src_name,
+                dst: session.dst_name
+
             });
         });
 
@@ -119,23 +132,7 @@ function startObserve(interfaceName) {
     pcap_session.on('packet', function (raw_packet) {
         var packet = pcap.decode.packet(raw_packet);
 
-
-        // console.log(raw_packet)
-
-        var buf = raw_packet.buf;
-
-        var str = buf.toString('utf8', 0, buf.length);
-
-        // console.log(str);
-
-        parsePacket(packet, (data) => {
-
-            sendEvent({
-                name: data.eventName,
-                data: data
-            })
-
-        });
+        parsePacket(packet, sendEvent);
 
         tcp_tracker.track_packet(packet);
     });
@@ -144,13 +141,13 @@ function startObserve(interfaceName) {
 }
 
 
-function getCountryByIP(rawPacket){
+function getCountry(rawPacket) {
 
     var ip = rawPacket.payload.payload.saddr.addr.join('.');
 
     var geoData = lookup.get(ip);
 
-    if(geoData && geoData.country && geoData.country.names){
+    if (geoData && geoData.country && geoData.country.names) {
         return geoData.country.names.en;
     } else {
         return 'Unrecognized';
@@ -165,25 +162,46 @@ function parseDNS(rawPacket) {
 
     var dns = new DNS().decode(rawPacket.payload.payload.payload.data, 0, rawPacket.payload.payload.payload.data.length);
 
-    // console.log(dns.answer)
-
     if (dns.answer.rrs.length > 0) {
 
         data.eventName = DNS_RESPONSE_EVENT;
 
+        let domains = {};
 
+        for (var i = 0; i < dns.answer.rrs.length; i++) {
+
+            let name = dns.answer.rrs[i].name;
+            let value = null;
+
+            if (dns.answer.rrs[i].rdata) {
+                value = dns.answer.rrs[i].rdata.toString();
+            }
+
+            if (!domains[name]) {
+                domains[name] = [];
+            }
+
+            if (value) domains[name].push(value)
+
+        }
+
+        let cleanDomains = {};
+
+        Object.keys(domains).map((d) => {
+
+            if (domains[d].length) {
+                cleanDomains[d] = domains[d];
+            }
+
+        });
+
+        data.domains = cleanDomains;
 
     } else if (dns.question.rrs.length > 0) {
 
         data.eventName = DNS_REQUEST_EVENT;
 
-        console.log(dns.question.rrs);
-
-        for (var i=0; i < dns.question.rrs.length; i++) {
-            console.log(dns.question.rrs[i].name)
-
-            console.log(dns.question.rrs[i].rdata)
-        }
+        data.domain = dns.question.rrs[0].name;
 
     }
 
@@ -222,23 +240,71 @@ function parseHTTP(rawPacket) {
 }
 
 
+var detect_mail_login_request = function (buf) {
+    var str = buf.toString('utf8', 0, buf.length);
+
+    return (/(LOGIN|login) /.test(str));
+};
+
+
+var mail_request_content = function (buf) {
+    var str = buf.toString('utf8', 0, buf.length);
+    var isAscii = true;
+    for (var i = 0, len = str.length; i < len; i++) {
+        if (buf[i] > 127) {
+            isAscii = false;
+            break;
+        }
+    }
+    if (isAscii)
+        return str;
+    return null;
+
+};
+
+
+function parseMail(rawPacket) {
+
+    var tcp = rawPacket.payload.payload.payload;
+
+    if (tcp.data_bytes) {
+        if (detect_mail_login_request(tcp.data)) {
+            var data = mail_request_content(tcp.data);
+            if (data) {
+
+            }
+        }
+
+
+    }
+}
+
+
 function parseHTTPS(rawPacket) {
 
-    // console.log(rawPacket.payload.payload.payload);
+    // console.log(rawPacket.payload.payload);
+
+    let data = rawPacket.payload.payload.payload.data;
+
+    var src = rawPacket.payload.payload.saddr.toString() + ':' + rawPacket.payload.payload.payload.sport;
+    var dst = rawPacket.payload.payload.daddr.toString() + ':' + rawPacket.payload.payload.payload.dport;
+
+    if (data) {
+        var str = data.toString('utf8', 0, data.length);
+        // console.log(str);
+    }
 
     return {
         eventName: HTTPS_REQUEST_EVENT,
-        data: {}
+        src: src,
+        dst: dst
     }
 }
 
 
 function parsePacket(rawPacket, callback) {
 
-    if (!rawPacket.payload ||
-        !rawPacket.payload.payload ||
-        !rawPacket.payload.payload.saddr ||
-        !rawPacket.payload.payload.payload) {
+    if (!rawPacket.payload || !rawPacket.payload.payload || !rawPacket.payload.payload.saddr || !rawPacket.payload.payload.payload) {
         return null
     }
 
@@ -261,11 +327,18 @@ function parsePacket(rawPacket, callback) {
 
         parseData = parseHTTPS(rawPacket)
 
+    } else if (rawPacket.payload.payload.payload.decoderName === 'tcp' &&
+        (rawPacket.payload.payload.payload.dport === 143 ||
+        rawPacket.payload.payload.payload.dport === 110)) {
+
+        parseData = parseMail(rawPacket)
+
     }
+
 
     data = Object.assign(data, parseData);
 
-    data.country = getCountryByIP(rawPacket);
+    data.country = getCountry(rawPacket);
 
     // console.log(data.country);
 

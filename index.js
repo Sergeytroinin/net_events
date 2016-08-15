@@ -23,7 +23,9 @@ module.exports = function(interfaceName){
      * Process event from worker
      */
     worker.on('message', (event) => {
-        emitter.emit(event.name, event.data)
+
+
+        emitter.emit(event.eventName, event)
     });
 
     /**
