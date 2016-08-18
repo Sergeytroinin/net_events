@@ -1,6 +1,6 @@
 {
   "name": "net_events",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,9 +10,9 @@
     "name": "Sergey Troinin",
     "email": "sergey4troinin@gmail.com"
   },
-  "repository" : {
-    "type" : "git",
-    "url" : "https://github.com/Sergeytroinin/net_events"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sergeytroinin/net_events"
   },
   "license": "MIT",
   "dependencies": {
