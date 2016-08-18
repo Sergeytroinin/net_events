@@ -29,6 +29,10 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ### Changelog
 
+### 0.0.4
+
+* Complete POP/SMTP/IMAP
+
 ## 0.0.3
 
 * Fix double HTTP response
