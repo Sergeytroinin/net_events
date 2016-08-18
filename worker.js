@@ -17,6 +17,20 @@ const fs = require('fs'),
     });
 
 
+const POP_PORTS = [110,995];
+const SMTP_PORTS = [25,587,465];
+const IMAP_PORTS = [143,993];
+
+const ENCRYPTED_PORTS = [995, 587, 465, 993];
+
+const MAIL_PORTS = POP_PORTS
+    .concat(SMTP_PORTS)
+    .concat(IMAP_PORTS);
+
+
+const mailSessionData = {};
+
+
 /**
  * Waiting for interface name and start observing
  */
@@ -121,7 +135,7 @@ function onTCPSession(tcpSession) {
     /**
      * Handle http session errors
      */
-    httpSession.on("http error", function (s, d, error) {
+    httpSession.on("http error", function () {
 
         let message = "Error in HTTPSession module";
 
@@ -276,6 +290,8 @@ function startObserve(interfaceName) {
 
         session.on('end', function (session) {
 
+            completeMailSession(session);
+
             sendEvent({
                 eventName: events.DISCONNECT_EVENT,
                 src: session.src_name,
@@ -414,72 +430,79 @@ function parseDNS(rawPacket) {
 
 
 /**
- * Check is packet contain mail login request
- * @param buffer
- * @returns {boolean}
- */
-function isMailLoginRequest(buffer) {
-
-    let decodedBuffer = buffer.toString('utf8', 0, buffer.length);
-
-    return (/(LOGIN|login) /.test(decodedBuffer));
-
-}
-
-
-/**
- * Get content from mail request
- * @param buffer
- * @returns {*}
- */
-function getMailRequestContent(buffer) {
-
-    let decodedBuffer = buffer.toString('utf8', 0, buffer.length);
-    let isAscii = true;
-
-    for (let i = 0, len = decodedBuffer.length; i < len; i++) {
-        if (buffer[i] > 127) {
-            isAscii = false;
-            break;
-        }
-    }
-
-    if (isAscii) {
-        return decodedBuffer;
-    } else {
-        return null;
-    }
-
-}
-
-
-/**
- *
+ * Parse mail data from raw packet
  * @param rawPacket
  */
 function parseMail(rawPacket) {
 
+    let ip = rawPacket.payload.payload;
     let tcp = rawPacket.payload.payload.payload;
+    let dport = tcp.dport;
 
-    console.log(tcp);
+    let data = {
+        eventName: events.MAIL_EVENT
+    };
 
-    //noinspection JSUnresolvedVariable
-    if (tcp.data_bytes) {
-        if (isMailLoginRequest(tcp.data)) {
-            let data = getMailRequestContent(tcp.data);
-            if (data) {
+    let src = ip.saddr.toString() + ':' + tcp.sport;
+    let dst = ip.daddr.toString() + ':' + tcp.dport;
 
-                return {
-                    eventName: events.MAIL_EVENT,
-                    data: data
-                }
+    let sessionKey = `${src}::${dst}`;
 
-            }
+    let isEncrypted = isMailConnectionEncrypted(dport);
+
+    data.isEncrypted = isEncrypted;
+
+    if(mailSessionData[sessionKey]){
+
+        if(!isEncrypted && tcp.data){
+            mailSessionData[sessionKey].data = Buffer
+                .concat([mailSessionData[sessionKey].data, tcp.data])
         }
 
+        return
     }
 
-    return {}
+    data.protocol = getMailProtocol(dport);
+
+    data.src = src;
+    data.dst = dst;
+
+    data.port = dport;
+    
+    if(!isEncrypted && tcp.data){
+
+        data.data = tcp.data;
+    }
+
+    data.country = getCountry(rawPacket);
+
+    mailSessionData[sessionKey] = data;
+
+}
+
+/**
+ * Handle complete mail session
+ * @param session
+ */
+function completeMailSession(session){
+
+    let src = session.src_name;
+    let dst = session.dst_name;
+
+    var key = `${src}::${dst}`;
+
+    if(mailSessionData[key]){
+
+        let eventData = mailSessionData[key];
+
+        if(!eventData.isEncrypted){
+            eventData.data = eventData.data.toString('utf8', 0, eventData.data.length);
+        }
+
+        sendEvent(eventData);
+        mailSessionData[key] = null;
+    }
+
 }
 
 
@@ -511,7 +534,36 @@ function parseHTTPS(rawPacket) {
 }
 
 
-var mailBuffer = new Buffer('');
+/**
+ * Return mail protocol for given port
+ * @param port
+ */
+function getMailProtocol(port){
+
+    let protocol;
+
+    if(POP_PORTS.indexOf(port) !== -1){
+        protocol = 'POP';
+    } else if(SMTP_PORTS.indexOf(port) !== -1){
+        protocol = 'SMTP';
+    } else if(IMAP_PORTS.indexOf(port) !== -1) {
+        protocol = 'IMAP';
+    }
+
+    return protocol;
+
+}
+
+
+/**
+ * Check is mail protocol encrypted by port
+ * @param port
+ * @returns {boolean}
+ */
+function isMailConnectionEncrypted(port){
+    return ENCRYPTED_PORTS.indexOf(port) !== -1;
+}
+
 
 /**
  * Handle tcp packets
@@ -541,35 +593,12 @@ function parsePacket(rawPacket, callback) {
 
         parseData = parseHTTPS(rawPacket);
 
-    } else if (decoderName === 'tcp' && (dport === 143 || dport === 110)) {
-
-        console.log('MAIl')
+    } else if (decoderName === 'tcp' && MAIL_PORTS.indexOf(dport) !== -1){
 
         parseData = parseMail(rawPacket);
 
-    }  else if (rawPacket.payload.payload.payload.decoderName === 'tcp' &&
-        (rawPacket.payload.payload.payload.dport === 993 ||
-        rawPacket.payload.payload.payload.dport === 995)
-    ) {
+        return null;
 
-        let tcp = rawPacket.payload.payload.payload;
-
-        if(tcp && tcp.data) {
-
-            mailBuffer = Buffer.concat([mailBuffer, tcp.data])
-            let str;
-            try{
-                str = zlib.unzipSync(mailBuffer).toString('utf8', 0, mailBuffer.length);
-            }catch(e){
-                str = ''
-            }
-
-            // console.log(mailBuffer);
-            // console.log(str);
-
-        }
-
-        // console.log()
     }
 
     data = Object.assign(data, parseData);

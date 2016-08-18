@@ -10,6 +10,10 @@
     "name": "Sergey Troinin",
     "email": "sergey4troinin@gmail.com"
   },
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/Sergeytroinin/net_events"
+  },
   "license": "MIT",
   "dependencies": {
     "cookie": "^0.3.1",

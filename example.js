@@ -33,11 +33,11 @@ logger.events.on(events.DNS_RESPONSE_EVENT, (event) => {
 });
 
 logger.events.on(events.HTTP_REQUEST_EVENT, (event) => {
-    // console.log('REQUEST', event.data.data.id)
+    console.log('REQUEST', event.data.data.id)
 });
 
 logger.events.on(events.HTTP_RESPONSE_EVENT, (event) => {
-    // console.log('RESPONSE', event.data.data.id)
+    console.log('RESPONSE', event.data.data.id)
 });
 
 logger.events.on(events.MAIL_EVENT, (data) => {
