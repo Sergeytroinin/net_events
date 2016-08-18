@@ -1,9 +1,8 @@
 'use strict';
 const Logger = require('./index');
+const events = Logger.events;
 
-const events = require('./events');
-
-const logger = Logger('wlan0');
+const logger = Logger.logger('wlan0');
 
 
 var DNS_DATA = {};

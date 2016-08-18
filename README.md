@@ -10,11 +10,12 @@ Provide event-based interface, which allow get information about DNS, HTTP, HTTP
 
 ```javascript
 const Logger = require('net_events');
+const events = Logger.events;
 
-const logger = Logger('wlan0');
+const logger = Logger.logger('wlan0');
 
 
-logger.events.on('CONNECT_EVENT', (event) => {
+logger.events.on(events.CONNECT_EVENT, (event) => {
     ...
 });
 
@@ -24,5 +25,20 @@ logger.events.on('CONNECT_EVENT', (event) => {
 
 * Track start and end session
 * Track dns request and response
-* POP/SMTP
 * HTTPS events
+
+### Changelog
+
+## 0.0.3
+
+* Fix double HTTP response
+* Add fields to HTTP events data
+* Add id to DNS request/response
+
+## 0.0.2
+
+Ready handlers for HTTP, DNS, start and end of TCP session
+
+## 0.0.1
+
+Just skeleton for module. Start watcher in separate process and send events in main process

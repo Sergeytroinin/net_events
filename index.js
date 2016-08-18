@@ -1,12 +1,13 @@
 'use strict';
 const fork = require('child_process').fork;
 const EventEmitter = require('events');
+const events = require('./events');
 
 /**
  * Function which start observing for the traffic
  * @returns {{events: EventEmitter, finish: (())}}
  */
-module.exports = function(interfaceName){
+var logger = function(interfaceName){
 
     const worker = fork(__dirname + '/worker.js');
     const emitter = new EventEmitter();
@@ -47,4 +48,9 @@ module.exports = function(interfaceName){
         finish: finish
     }
 
+};
+
+module.exports = {
+    logger: logger,
+    events: events
 };
