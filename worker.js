@@ -30,6 +30,14 @@ process.on('message', (e) => {
 
 
 /**
+ * To keep format consistent we use guid both for HTTP and DNS events
+ * DNS has it's own id and we use it like keys for keeping guid for each request/response pair
+ * @type {{}}
+ */
+const DNS_IDS = {};
+
+
+/**
  * Send event to main process
  * @param eventData
  */
@@ -128,13 +136,20 @@ function onTCPSession(tcpSession) {
 
         let req = session.request;
 
+        let id = guid();
+
+        requestObject.id = id;
+        responseObject.id = id;
+
         requestObject.headers = req.headers;
 
         if (requestObject.headers['Cookie']) {
             requestObject.headers['Cookie'] = cookie.parse(requestObject.headers['Cookie'])
         }
 
-        requestObject.host = req.headers['Host'];
+        requestObject.url = req.url;
+        requestObject.method = req.method;
+        requestObject.host = req.headers['Host'] || req.headers['Server'];
 
     });
 
@@ -166,7 +181,7 @@ function onTCPSession(tcpSession) {
             }
 
             try {
-                requestObject.parseBody = JSON.parse(requestObject.parseBody)
+                parseBody = JSON.parse(requestObject.parseBody)
             } catch (e) {
             }
 
@@ -174,6 +189,8 @@ function onTCPSession(tcpSession) {
             if (requestBuffer.length) {
                 requestObject.buffer = requestBuffer;
             }
+
+            requestObject.parseBody = parseBody;
 
             requestBuffer = new Buffer('');
 
@@ -190,11 +207,13 @@ function onTCPSession(tcpSession) {
         let req = session.response;
 
         responseObject.headers = req.headers;
+
         if (responseObject.headers['Cookie']) {
             responseObject.headers['Cookie'] = cookie.parse(responseObject.headers['Cookie'])
         }
 
-        responseObject.host = req.headers['Host'];
+        responseObject.url = req.headers['Host'] || req.headers['Server'];
+        responseObject.status = req.status_code;
 
     });
 
@@ -280,6 +299,7 @@ function startObserve(interfaceName) {
 
 /**
  * Get country by provided ip using maxmind
+ * TODO Implement locale handler
  * @param ip
  * @returns {*}
  */
@@ -325,6 +345,10 @@ function parseDNS(rawPacket) {
 
     const dns = new DNS().decode(tcp.data, 0, tcp.data.length);
 
+
+    // console.log('Qwduina',dns.question);
+    // console.log('Aklsjdfgiosd', dns.answer);
+
     if (dns.answer.rrs.length > 0) {
 
         data.eventName = events.DNS_RESPONSE_EVENT;
@@ -365,12 +389,23 @@ function parseDNS(rawPacket) {
 
         data.domains = cleanDomains;
 
+        data.id = DNS_IDS[dns.id];
+
+        DNS_IDS[dns.id] = null;
+
+
     } else if (dns.question.rrs.length > 0) {
+
+        let id = guid();
+
+        DNS_IDS[dns.id] = id;
 
         data.eventName = events.DNS_REQUEST_EVENT;
 
         data.domain = dns.question.rrs[0].name;
 
+        data.id = id;
+        
     }
 
     return data;
@@ -426,6 +461,8 @@ function parseMail(rawPacket) {
 
     let tcp = rawPacket.payload.payload.payload;
 
+    console.log(tcp);
+
     //noinspection JSUnresolvedVariable
     if (tcp.data_bytes) {
         if (isMailLoginRequest(tcp.data)) {
@@ -474,6 +511,8 @@ function parseHTTPS(rawPacket) {
 }
 
 
+var mailBuffer = new Buffer('');
+
 /**
  * Handle tcp packets
  * @param rawPacket
@@ -504,8 +543,33 @@ function parsePacket(rawPacket, callback) {
 
     } else if (decoderName === 'tcp' && (dport === 143 || dport === 110)) {
 
+        console.log('MAIl')
+
         parseData = parseMail(rawPacket);
 
+    }  else if (rawPacket.payload.payload.payload.decoderName === 'tcp' &&
+        (rawPacket.payload.payload.payload.dport === 993 ||
+        rawPacket.payload.payload.payload.dport === 995)
+    ) {
+
+        let tcp = rawPacket.payload.payload.payload;
+
+        if(tcp && tcp.data) {
+
+            mailBuffer = Buffer.concat([mailBuffer, tcp.data])
+            let str;
+            try{
+                str = zlib.unzipSync(mailBuffer).toString('utf8', 0, mailBuffer.length);
+            }catch(e){
+                str = ''
+            }
+
+            // console.log(mailBuffer);
+            // console.log(str);
+
+        }
+
+        // console.log()
     }
 
     data = Object.assign(data, parseData);
