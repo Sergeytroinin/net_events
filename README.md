@@ -29,7 +29,13 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ### Changelog
 
-### 0.0.4
+## 0.0.5
+
+* Download Maxmind db when module starting first time
+* Add ip to DNS
+* Add Ready event
+
+## 0.0.4
 
 * Complete POP/SMTP/IMAP
 
@@ -41,8 +47,8 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ## 0.0.2
 
-Ready handlers for HTTP, DNS, start and end of TCP session
+* Ready handlers for HTTP, DNS, start and end of TCP session
 
 ## 0.0.1
 
-Just skeleton for module. Start watcher in separate process and send events in main process
+* Just skeleton for module. Start watcher in separate process and send events in main process

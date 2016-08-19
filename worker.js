@@ -7,14 +7,9 @@ const fs = require('fs'),
     DNS = require("pcap/decode/dns"),
 
     events = require('./events'),
-    HTTPSession = require("./session"),
+    HTTPSession = require("./session");
 
-    lookup = maxmind.open('./GeoLite2-Country.mmdb', {
-        cache: {
-            max: 1000,
-            maxAge: 1000 * 60 * 60
-        }
-    });
+var lookup;
 
 
 const POP_PORTS = [110,995];
@@ -226,7 +221,7 @@ function onTCPSession(tcpSession) {
             responseObject.headers['Cookie'] = cookie.parse(responseObject.headers['Cookie'])
         }
 
-        responseObject.url = req.headers['Host'] || req.headers['Server'];
+        responseObject.url = requestObject.url;
         responseObject.status = req.status_code;
 
     });
@@ -277,6 +272,16 @@ function startObserve(interfaceName) {
 
     const tcpTracker = new pcap.TCPTracker(),
         pcapSession = pcap.createSession(interfaceName, "");
+
+
+    console.log('uigUIGGYUGUG')
+
+    lookup = maxmind.open('./GeoLite2-Country.mmdb', {
+        cache: {
+            max: 1000,
+            maxAge: 1000 * 60 * 60
+        }
+    });
 
     tcpTracker.on('session', function (session) {
 
@@ -357,9 +362,13 @@ function getCountry(rawPacket) {
 function parseDNS(rawPacket) {
 
     let data = {};
-    let tcp = rawPacket.payload.payload.payload;
+    let ip = rawPacket.payload.payload;
+    let tcp = ip.payload;
 
     const dns = new DNS().decode(tcp.data, 0, tcp.data.length);
+
+    let src = ip.saddr.toString() + ':' + tcp.sport;
+    let dst = ip.daddr.toString() + ':' + tcp.dport;
 
 
     // console.log('Qwduina',dns.question);
@@ -423,6 +432,9 @@ function parseDNS(rawPacket) {
         data.id = id;
         
     }
+
+    data.src = src;
+    data.dst = dst;
 
     return data;
 
