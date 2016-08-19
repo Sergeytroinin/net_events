@@ -15,7 +15,7 @@ var maxMindSrc = 'http://geolite.maxmind.com/download/geoip/database/GeoLite2-Co
  * @param out
  * @param cb
  */
-function downloadMaxmindDatabase(url, dest, out, cb) {
+function downloadMaxmindDatabase(url, out, cb) {
 
     if(fs.existsSync(out)){
         cb();
@@ -23,28 +23,6 @@ function downloadMaxmindDatabase(url, dest, out, cb) {
     }
 
     http.get(url, (response) => {
-
-        // let src = fs.createWriteStream(dest);
-        //
-        // response.pipe(src);
-        //
-        // src.on('finish', () => {
-        //
-        //     src.close(() => {
-        //
-        //         let file = fs.createReadStream(dest);
-        //
-        //         let output = fs.createWriteStream(out);
-        //
-        //         file.pipe(zlib.createUnzip()).pipe(output);
-        //
-        //         file.on('finish', () => {
-        //             file.close(cb)
-        //         });
-        //
-        //     })
-        //
-        // })
 
         let output = fs.createWriteStream(out);
 
@@ -63,14 +41,11 @@ function downloadMaxmindDatabase(url, dest, out, cb) {
 var logger = function (interfaceName) {
 
     const MAXMIND_FILENAME = __dirname + '/GeoLite2-Country.mmdb';
-    const MAXMIND_FILENAME_GZ = __dirname + '/GeoLite2-Country.mmdb.gz';
 
     const worker = fork(__dirname + '/worker.js');
     const emitter = new EventEmitter();
 
-    downloadMaxmindDatabase(maxMindSrc, MAXMIND_FILENAME_GZ, MAXMIND_FILENAME, () => {
-
-        console.log('sdfsdf')
+    downloadMaxmindDatabase(maxMindSrc, MAXMIND_FILENAME, () => {
 
         emitter.emit(events.READY_EVENT, {});
 

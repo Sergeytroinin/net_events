@@ -272,11 +272,8 @@ function startObserve(interfaceName) {
 
     const tcpTracker = new pcap.TCPTracker(),
         pcapSession = pcap.createSession(interfaceName, "");
-
-
-    console.log('uigUIGGYUGUG')
-
-    lookup = maxmind.open('./GeoLite2-Country.mmdb', {
+    
+    lookup = maxmind.open(__dirname + '/GeoLite2-Country.mmdb', {
         cache: {
             max: 1000,
             maxAge: 1000 * 60 * 60
