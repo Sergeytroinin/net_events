@@ -29,6 +29,10 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ### Changelog
 
+## 0.0.6
+
+* Fix folder to download
+
 ## 0.0.5
 
 * Download Maxmind db when module starting first time
