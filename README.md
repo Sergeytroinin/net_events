@@ -29,6 +29,11 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ### Changelog
 
+### 0.0.7
+
+* Unify data format for all events
+* Fix dst and src for connect and disconnect events
+
 ## 0.0.6
 
 * Fix folder to download
