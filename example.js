@@ -14,12 +14,12 @@ logger.events.on(events.READY_EVENT, () => {
 
 logger.events.on(events.CONNECT_EVENT, (event) => {
     let data = event.data;
-    // console.log(`Session between ${data.src} and ${data.dst} started`)
+    console.log(`Session between ${data.src} and ${data.dst} started`)
 });
 
 logger.events.on(events.DISCONNECT_EVENT, (event) => {
     let data = event.data;
-    // console.log(`Session between ${data.src} and ${data.dst} ended`)
+    console.log(`Session between ${data.src} and ${data.dst} ended`)
 });
 
 logger.events.on(events.DNS_REQUEST_EVENT, (event) => {
@@ -37,11 +37,11 @@ logger.events.on(events.DNS_RESPONSE_EVENT, (event) => {
 });
 
 logger.events.on(events.HTTP_REQUEST_EVENT, (event) => {
-    // console.log('REQUEST', event.data.data.id)
+    // console.log('REQUEST', event)
 });
 
 logger.events.on(events.HTTP_RESPONSE_EVENT, (event) => {
-    // console.log('RESPONSE', event.data.data)
+    // console.log('RESPONSE', event)
 });
 
 logger.events.on(events.MAIL_EVENT, (data) => {

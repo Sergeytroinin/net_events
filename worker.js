@@ -52,8 +52,12 @@ const DNS_IDS = {};
  */
 function sendEvent(eventData) {
 
+    let name = eventData.eventName;
+
+    delete eventData.eventName;
+
     process.send({
-        eventName: eventData.eventName,
+        eventName: name,
         data: eventData
     })
 
@@ -203,10 +207,9 @@ function onTCPSession(tcpSession) {
 
             requestBuffer = new Buffer('');
 
-            sendEvent({
-                eventName: events.HTTP_REQUEST_EVENT,
-                data: requestObject
-            })
+            requestObject.eventName = events.HTTP_REQUEST_EVENT
+
+            sendEvent(requestObject)
 
         }
     );
@@ -254,10 +257,9 @@ function onTCPSession(tcpSession) {
 
         responseBuffer = new Buffer('');
 
-        sendEvent({
-            eventName: events.HTTP_RESPONSE_EVENT,
-            data: responseObject
-        })
+        responseObject.eventName = events.HTTP_RESPONSE_EVENT;
+
+        sendEvent(responseObject)
 
     });
 
@@ -272,7 +274,7 @@ function startObserve(interfaceName) {
 
     const tcpTracker = new pcap.TCPTracker(),
         pcapSession = pcap.createSession(interfaceName, "");
-    
+
     lookup = maxmind.open(__dirname + '/GeoLite2-Country.mmdb', {
         cache: {
             max: 1000,
@@ -286,8 +288,8 @@ function startObserve(interfaceName) {
 
         sendEvent({
             eventName: events.CONNECT_EVENT,
-            src: session.src_name,
-            dst: session.dst_name
+            src: session.src,
+            dst: session.dst
         });
 
         session.on('end', function (session) {
@@ -296,8 +298,8 @@ function startObserve(interfaceName) {
 
             sendEvent({
                 eventName: events.DISCONNECT_EVENT,
-                src: session.src_name,
-                dst: session.dst_name
+                src: session.src,
+                dst: session.dst
             });
 
         });
