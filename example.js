@@ -6,6 +6,7 @@ const logger = Logger.logger('wlan0');
 
 
 var DNS_DATA = {};
+var CONNECT_DATA = {};
 
 
 logger.events.on(events.READY_EVENT, () => {
@@ -14,12 +15,23 @@ logger.events.on(events.READY_EVENT, () => {
 
 logger.events.on(events.CONNECT_EVENT, (event) => {
     let data = event.data;
-    console.log(`Session between ${data.src} and ${data.dst} started`)
+    let key = `${data.src}::${data.dst}`;
+
+    CONNECT_DATA[key] = {dst: data.dst, disconnect: false};
+
+    // console.log(`Session between ${data.src} and ${data.dst} started`)
 });
 
 logger.events.on(events.DISCONNECT_EVENT, (event) => {
     let data = event.data;
-    console.log(`Session between ${data.src} and ${data.dst} ended`)
+
+    let key = `${data.src}::${data.dst}`;
+
+    delete CONNECT_DATA[key];
+
+    console.log(CONNECT_DATA[key]);
+
+    // console.log(`Session between ${data.src} and ${data.dst} ended`)
 });
 
 logger.events.on(events.DNS_REQUEST_EVENT, (event) => {
@@ -46,4 +58,8 @@ logger.events.on(events.HTTP_RESPONSE_EVENT, (event) => {
 
 logger.events.on(events.MAIL_EVENT, (data) => {
     console.log(data)
+});
+
+logger.events.on(events.RESET_EVENT, (data) => {
+    console.log('RESET', data)
 });

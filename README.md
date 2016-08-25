@@ -29,6 +29,11 @@ logger.events.on(events.CONNECT_EVENT, (event) => {
 
 ### Changelog
 
+### 0.0.8
+
+* Fix src and dst format
+* Add reset event
+
 ### 0.0.7
 
 * Unify data format for all events

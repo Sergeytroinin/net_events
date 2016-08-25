@@ -116,15 +116,15 @@ function onTCPSession(tcpSession) {
     // TODO Need to find more common way to create this objects
     let responseObject = {
         id: id,
-        src: tcpSession.src_name,
-        dst: tcpSession.dst_name,
+        src: tcpSession.src,
+        dst: tcpSession.dst,
         country: country
     };
 
     let requestObject = {
         id: id,
-        src: tcpSession.src_name,
-        dst: tcpSession.dst_name,
+        src: tcpSession.src,
+        dst: tcpSession.dst,
         country: country
     };
 
@@ -207,7 +207,7 @@ function onTCPSession(tcpSession) {
 
             requestBuffer = new Buffer('');
 
-            requestObject.eventName = events.HTTP_REQUEST_EVENT
+            requestObject.eventName = events.HTTP_REQUEST_EVENT;
 
             sendEvent(requestObject)
 
@@ -304,6 +304,16 @@ function startObserve(interfaceName) {
 
         });
 
+        session.on('reset', function (session) {
+            
+            sendEvent({
+                eventName: events.RESET_EVENT,
+                src: session.src,
+                dst: session.dst
+            });
+
+        });
+
     });
 
     pcapSession.on('packet', function (rawPacket) {
@@ -370,9 +380,6 @@ function parseDNS(rawPacket) {
     let dst = ip.daddr.toString() + ':' + tcp.dport;
 
 
-    // console.log('Qwduina',dns.question);
-    // console.log('Aklsjdfgiosd', dns.answer);
-
     if (dns.answer.rrs.length > 0) {
 
         data.eventName = events.DNS_RESPONSE_EVENT;
@@ -416,7 +423,6 @@ function parseDNS(rawPacket) {
         data.id = DNS_IDS[dns.id];
 
         DNS_IDS[dns.id] = null;
-
 
     } else if (dns.question.rrs.length > 0) {
 

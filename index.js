@@ -11,7 +11,6 @@ var maxMindSrc = 'http://geolite.maxmind.com/download/geoip/database/GeoLite2-Co
 /**
  * Function which get and unpack Maxmind db
  * @param url
- * @param dest
  * @param out
  * @param cb
  */
